@@ -19,4 +19,40 @@ model URL {
   slug String @unique
   long_url String // This is the original URL that where it should redirect to
   created_at DateTime @default(now())
+
+  //Relations
+  user_id Int
+  user User @relation(fields: [user_id], references: [id])
+
+  domain_id Int? // Links to the Domain (null for default domain)
+  domain Domain? @relation(fields: [domain_id], references: [id])
+
+  // This is to ensure the slug is unique per domain
+  @@unique([domain_id, slug])
+}
+
+// The table for users
+model User {
+  id Int @id @default(autoincrement())
+  email String @unique
+  password_hash String
+  subscription_level String
+  created_at DateTime @default(now())
+
+  //Relations
+  urls URL[]
+  domains Domain[]
+}
+
+// The table for custom domains
+model Domain {
+  id Int @id @default(autoincrement())
+
+  domain_name String @unique
+
+  user User @relation(fields: [user_id], references: [id])
+  user_id Int
+
+  urls URL[]
+
 }

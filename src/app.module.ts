@@ -5,9 +5,10 @@ import { UrlshortenerModule } from './urlshortener/urlshortener.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TransformResponseInterceptor } from './interceptors/transformResponse.interceptor';
 import { PrismaService } from './prisma/prisma.service';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [UrlshortenerModule],
+  imports: [UrlshortenerModule, AuthModule],
   controllers: [AppController],
   providers: [
     AppService,
