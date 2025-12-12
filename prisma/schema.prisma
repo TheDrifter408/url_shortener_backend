@@ -38,7 +38,8 @@ model User {
   password_hash String
   subscription_level String
   created_at DateTime @default(now())
-
+  // hashed refresh token for JWT functionality
+  hashed_refresh_token String?
   //Relations
   urls URL[]
   domains Domain[]
