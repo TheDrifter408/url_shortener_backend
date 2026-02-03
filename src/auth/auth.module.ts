@@ -11,17 +11,18 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET_TOKEN'),
+        secret: configService.get<string>('JWT_ACCESS_SECRET'),
         signOptions: { expiresIn: '60s' },
       }),
       inject: [ConfigService],
-    })
+    }),
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
     PrismaService,
     JwtStrategy,
+    ConfigService,
   ],
   exports: [AuthService]
 })

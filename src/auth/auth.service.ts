@@ -1,6 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-auth.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 import * as bcrypt from 'bcrypt';
@@ -73,10 +72,16 @@ export class AuthService {
           subscription_level: 'free',
         }
       });
-      return {
+      const { access_token, refresh_token } = await this.getTokens(user.id, user.email);
+      const userObj = {
         id: user.id,
         email: user.email,
         subscription_level: user.subscription_level,
+      }
+      return {
+        refresh_token,
+        access_token,
+        user: userObj
       }
     } else {
       throw new HttpException("This email already exists", HttpStatus.CONFLICT);
@@ -93,10 +98,16 @@ export class AuthService {
     if (user) {
       const comparedPassword = await bcrypt.compare(createUserDto.password, user.password_hash);
       if (comparedPassword) {
-        return {
+        const userObj = {
           id: user.id,
           email: user.email,
           subscription_level: user.subscription_level,
+        }
+        const { access_token, refresh_token } = await this.getTokens(user.id, user.email);
+        return {
+          access_token,
+          refresh_token,
+          user: userObj
         }
       } else {
         throw new HttpException("Invalid Credentials", HttpStatus.UNAUTHORIZED);
