@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { SlugGenerator } from "./slugGenerator";
 import { CreateUrlDto } from "./dto/createUrl.dto";
+import { User } from "@prisma/client";
 
 @Injectable()
 export class UrlShortenerService {
@@ -19,7 +20,7 @@ export class UrlShortenerService {
     });
     return found;
   }
-  async create(payload: CreateUrlDto) {
+  async create(payload: CreateUrlDto, user: Pick<User, "id" | "email">) {
     const found = await this.prismaService.uRL.findFirst({
       where: {
         long_url: payload.payload,
@@ -54,6 +55,7 @@ export class UrlShortenerService {
       data: {
         long_url: payload.payload,
         slug,
+        user_id: user.id,
       }
     });
 
@@ -62,6 +64,5 @@ export class UrlShortenerService {
       short_url: `${process.env.BASE_URL}/${slug}`,
       original_url: payload.payload,
     }
-
   }
 }

@@ -1,8 +1,11 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Redirect, Req, SetMetadata } from "@nestjs/common";
+import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Redirect, Req, SetMetadata, UnauthorizedException, UseGuards } from "@nestjs/common";
 import  type { Request } from "express";
 import { UrlShortenerService } from "./urlshortener.service";
 import { CreateUrlDto } from "./dto/createUrl.dto";
 import { SKIP_RESPONSE_TRANSFORM } from "src/interceptors/intercepter.constants";
+import { JwtAuthGuard } from "src/auth/guards/jwtAuth.guard";
+import type { RequestUser } from "src/auth/types/JwtPayload";
+import { GetUser } from "src/auth/decorators/get-user.decorator";
 
 @Controller('minurl')
 export class UrlShortenerController {
@@ -10,6 +13,9 @@ export class UrlShortenerController {
   constructor(urlShortenerService: UrlShortenerService) {
     this.urlShortenerService = urlShortenerService;
   }
+  @UseGuards(JwtAuthGuard)
+
+
   @Get()
   getAllUrls() {
     return this.urlShortenerService.getAllUrls();
@@ -37,8 +43,11 @@ export class UrlShortenerController {
   }
 
   @Post()
-  shortenUrl(@Body() body: CreateUrlDto) {
-    return this.urlShortenerService.create(body);
+  shortenUrl(@Body() body: CreateUrlDto, @GetUser() user: RequestUser) {
+    if (user) {
+      return this.urlShortenerService.create(body, user);
+    }
+    throw new UnauthorizedException();
   }
 
 }
