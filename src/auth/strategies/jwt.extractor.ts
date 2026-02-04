@@ -11,4 +11,5 @@ export function extractRefreshJwtFromCookie(request: Request) {
   if (request.cookies && request.cookies.refresh_token) {
     return request.cookies.refresh_token;
   }
+  return null;
 }

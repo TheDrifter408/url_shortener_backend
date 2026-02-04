@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ForbiddenException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -27,7 +27,7 @@ export class AuthService {
       this.jwtService.signAsync(payload),
       // 2. The refresh token that uses a different secret key
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>("JWT_REFRESH_TOKEN")!,
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         expiresIn: '7d'
       })
     ]);
@@ -38,7 +38,7 @@ export class AuthService {
     }
   }
 
-  async updateHashedRefreshToken(userId: number, token: string) {
+  async updateHashedRefreshToken(userId: number, token: string | null) {
     let hashedRefreshToken: string | null = null;
 
     if (token) {
@@ -73,11 +73,15 @@ export class AuthService {
         }
       });
       const { access_token, refresh_token } = await this.getTokens(user.id, user.email);
+
+      await this.updateHashedRefreshToken(user.id, refresh_token);
+
       const userObj = {
         id: user.id,
         email: user.email,
         subscription_level: user.subscription_level,
       }
+
       return {
         refresh_token,
         access_token,
@@ -98,12 +102,17 @@ export class AuthService {
     if (user) {
       const comparedPassword = await bcrypt.compare(createUserDto.password, user.password_hash);
       if (comparedPassword) {
+
         const userObj = {
           id: user.id,
           email: user.email,
           subscription_level: user.subscription_level,
         }
+
         const { access_token, refresh_token } = await this.getTokens(user.id, user.email);
+
+        await this.updateHashedRefreshToken(user.id, refresh_token);
+
         return {
           access_token,
           refresh_token,
@@ -113,6 +122,10 @@ export class AuthService {
         throw new HttpException("Invalid Credentials", HttpStatus.UNAUTHORIZED);
       }
     }
+  }
+
+  async logout(userId: number) {
+    await this.updateHashedRefreshToken(userId, null);
   }
 
   async findUser(email: string, userId?: number) {
@@ -130,5 +143,29 @@ export class AuthService {
       }
     });
     return found;
+  }
+
+  async refreshTokens(userId: number, rt: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        id: userId,
+      }
+    });
+
+    if (!user || !user.hashed_refresh_token) {
+      throw new ForbiddenException('Access Denied');
+    }
+
+    const rtMatches = await bcrypt.compare(rt, user.hashed_refresh_token);
+
+    if (!rtMatches) {
+      throw new ForbiddenException('Access Denied');
+    }
+
+    const tokens = await this.getTokens(user.id, user.email);
+
+    await this.updateHashedRefreshToken(user.id, tokens.refresh_token);
+
+    return tokens;
   }
 }

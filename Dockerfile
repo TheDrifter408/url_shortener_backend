@@ -8,12 +8,18 @@ WORKDIR /app
 # Copy lockfile and package.json first
 COPY pnpm-lock.yaml package.json ./
 
+# Copy the prisma schema
+COPY prisma ./prisma/
+
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-Copy . .
+# Generate the prisma client
+RUN npx prisma generate
+
+COPY . .
 
 EXPOSE 5000
 
 # Use commands to run the app
-CMD ["pnpm", "run", "dev"]
+CMD ["pnpm", "start:dev"]
