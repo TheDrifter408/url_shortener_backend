@@ -6,7 +6,9 @@ import { User } from "@prisma/client";
 
 @Injectable()
 export class UrlShortenerService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+  ) {}
 
   async getAllUrls() {
     return 'All urls';
