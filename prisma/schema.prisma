@@ -21,8 +21,8 @@ model URL {
   created_at DateTime @default(now())
 
   //Relations
-  user_id Int
-  user    User @relation(fields: [user_id], references: [id])
+  user_id Int?
+  user    User? @relation(fields: [user_id], references: [id])
 
   domain_id Int? // Links to the Domain (null for default domain)
   domain    Domain? @relation(fields: [domain_id], references: [id])

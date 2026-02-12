@@ -8,7 +8,8 @@ import { GetUser } from "src/auth/decorators/get-user.decorator";
 
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import  type { Request } from 'express';
+import type { Request } from 'express';
+import { OptionalJwtAuthGuard } from 'src/auth/guards/optionalJwtAuth.guard';
 
 @Controller('minurl')
 export class UrlShortenerController {
@@ -19,19 +20,24 @@ export class UrlShortenerController {
   ) {
     this.urlShortenerService = urlShortenerService;
   }
+
   @UseGuards(JwtAuthGuard)
-
-
-  @Get()
+  @Get('/all')
   getAllUrls() {
     return this.urlShortenerService.getAllUrls();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':slug/analytics')
+  async getAnalytics(@Param('slug') slug: string) {
+    return this.urlShortenerService.getAnalytics(slug);
   }
 
   @SetMetadata(SKIP_RESPONSE_TRANSFORM, true)
   @Get(':slug')
   @Redirect()
   async redirectToOriginalUrl(
-    @Param('slug') slug:string,
+    @Param('slug') slug: string,
     @Req() req: Request,
   ) {
 
@@ -59,11 +65,9 @@ export class UrlShortenerController {
   }
 
   @Post()
-  shortenUrl(@Body() body: CreateUrlDto, @GetUser() user: RequestUser) {
-    if (user) {
-      return this.urlShortenerService.create(body, user);
-    }
-    throw new UnauthorizedException();
+  @UseGuards(OptionalJwtAuthGuard)
+  shortenUrl(@Body() body: CreateUrlDto, @GetUser() user: RequestUser | null) {
+    return this.urlShortenerService.create(body, user);
   }
 
 }

@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { SlugGenerator } from "./slugGenerator";
 import { CreateUrlDto } from "./dto/createUrl.dto";
@@ -8,10 +8,11 @@ import { User } from "@prisma/client";
 export class UrlShortenerService {
   constructor(
     private prismaService: PrismaService,
-  ) {}
+  ) { }
 
   async getAllUrls() {
-    return 'All urls';
+    const urls = await this.prismaService.uRL.findMany();
+    return urls;
   }
 
   async getOriginalUrl(slug: string) {
@@ -22,7 +23,8 @@ export class UrlShortenerService {
     });
     return found;
   }
-  async create(payload: CreateUrlDto, user: Pick<User, "id" | "email">) {
+
+  async create(payload: CreateUrlDto, user: Pick<User, "id" | "email"> | null) {
     const found = await this.prismaService.uRL.findFirst({
       where: {
         long_url: payload.payload,
@@ -57,7 +59,7 @@ export class UrlShortenerService {
       data: {
         long_url: payload.payload,
         slug,
-        user_id: user.id,
+        user_id: user?.id,
       }
     });
 
@@ -67,4 +69,46 @@ export class UrlShortenerService {
       original_url: payload.payload,
     }
   }
+
+  async getAnalytics(slug: string) {
+    const url = await this.prismaService.uRL.findUnique({
+      where: {
+        slug,
+      },
+      include: {
+        _count: { select: { clicks: true } },
+      }
+    });
+
+    if (!url) throw new NotFoundException('URL not found');
+
+    const [browsers, devices, os] = await Promise.all([
+      this.prismaService.clicks.groupBy({
+        by: ['browser'],
+        where: { url_id: url.id },
+        _count: true,
+      }),
+      this.prismaService.clicks.groupBy({
+        by: ['device'],
+        where: { url_id: url.id },
+        _count: true,
+      }),
+      this.prismaService.clicks.groupBy({
+        by: ['os'],
+        where: { url_id: url.id },
+        _count: true,
+      })
+    ]);
+
+    return {
+      total_clicks: url._count.clicks,
+      long_url: url.long_url,
+      breakdown: {
+        browsers,
+        devices,
+        os,
+      }
+    }
+  }
+
 }

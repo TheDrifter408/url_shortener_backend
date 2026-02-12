@@ -1,5 +1,5 @@
 export interface AnalyticsJobData {
-  urlId: string;
+  urlId: number;
   userAgent: string;
   referer: string | null;
   ip: string;
