@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { SlugGenerator } from "./slugGenerator";
 import { CreateUrlDto } from "./dto/createUrl.dto";
 import { User } from "@prisma/client";
+import { RequestUser } from 'src/auth/types/JwtPayload';
 
 @Injectable()
 export class UrlShortenerService {
@@ -10,13 +11,17 @@ export class UrlShortenerService {
     private prismaService: PrismaService,
   ) { }
 
-  async getAllUrls() {
-    const urls = await this.prismaService.uRL.findMany();
+  async getAllUrls(user: Pick<User, "id" | "email">) {
+    const urls = await this.prismaService.uRL.findMany({
+      where: {
+        user_id: user.id
+      }
+    });
     return urls;
   }
 
   async getOriginalUrl(slug: string) {
-    const found = await this.prismaService.uRL.findFirst({
+    const found = await this.prismaService.uRL.findUnique({
       where: {
         slug,
       }
@@ -28,10 +33,15 @@ export class UrlShortenerService {
     const found = await this.prismaService.uRL.findFirst({
       where: {
         long_url: payload.payload,
+        user_id: user?.id || null,
       }
     });
     if (found) {
-      return found.slug;
+      return {
+        slug: found.slug,
+        short_url: `${process.env.BASE_URL}/${found.slug}`,
+        long_url: found.long_url,
+      };
     }
 
     let slug = "";
@@ -70,7 +80,7 @@ export class UrlShortenerService {
     }
   }
 
-  async getAnalytics(slug: string) {
+  async getAnalytics(slug: string, user: RequestUser) {
     const url = await this.prismaService.uRL.findUnique({
       where: {
         slug,
@@ -81,6 +91,10 @@ export class UrlShortenerService {
     });
 
     if (!url) throw new NotFoundException('URL not found');
+
+    if (url.user_id !== user?.id) {
+      throw new ForbiddenException('You do not have permission to view this URL\'s anaytics');
+    }
 
     const [browsers, devices, os] = await Promise.all([
       this.prismaService.clicks.groupBy({

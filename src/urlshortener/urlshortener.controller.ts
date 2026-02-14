@@ -23,14 +23,14 @@ export class UrlShortenerController {
 
   @UseGuards(JwtAuthGuard)
   @Get('/all')
-  getAllUrls() {
-    return this.urlShortenerService.getAllUrls();
+  getAllUrls(@GetUser() user: RequestUser) {
+    return this.urlShortenerService.getAllUrls(user);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get(':slug/analytics')
-  async getAnalytics(@Param('slug') slug: string) {
-    return this.urlShortenerService.getAnalytics(slug);
+  async getAnalytics(@Param('slug') slug: string, @GetUser() user: RequestUser) {
+    return this.urlShortenerService.getAnalytics(slug, user);
   }
 
   @SetMetadata(SKIP_RESPONSE_TRANSFORM, true)
@@ -51,12 +51,15 @@ export class UrlShortenerController {
       throw new HttpException("Short URL not found", HttpStatus.NOT_FOUND);
     }
 
-    this.analyticsQueue.add('log-click', {
-      urlId: originalUrl.id,
-      userAgent: req.headers['user-agent'],
-      referer: req.headers['referer'],
-      ip: req.ip,
-    })
+    if (originalUrl.user_id) {
+      this.analyticsQueue.add('log-click', {
+        urlId: originalUrl.id,
+        userAgent: req.headers['user-agent'],
+        referer: req.headers['referer'],
+        ip: req.ip,
+      })
+    }
+
 
     return {
       url: originalUrl.long_url,
