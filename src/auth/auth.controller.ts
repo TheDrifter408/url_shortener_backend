@@ -113,8 +113,12 @@ export class AuthController {
       secure: isProduction,
       sameSite: 'strict',
       maxAge: refreshTokenMaxAge,
-    })
+    });
 
+    return {
+      success: true,
+      message: 'tokens refreshed'
+    };
   }
 
   @Post('/reset-password')
