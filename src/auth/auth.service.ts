@@ -1,4 +1,4 @@
-import { ForbiddenException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -6,6 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { BCRYPT_SALT_ROUNDS } from 'src/constants';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -14,7 +15,7 @@ export class AuthService {
     private prismaService: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService
-  ) {}
+  ) { }
 
   // Helper function to generate access and refresh tokens
   async getTokens(userId: number, email: string) {
@@ -143,6 +144,28 @@ export class AuthService {
       }
     });
     return found;
+  }
+
+  async resetPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const found = await this.findUser(forgotPasswordDto.email);
+    if (!found) {
+      throw new NotFoundException('No User exists with this email.');
+    }
+    const newHashedPassword = await bcrypt.hash(forgotPasswordDto.password, BCRYPT_SALT_ROUNDS);
+    const updated = await this.prismaService.user.update({
+      data: {
+        password_hash: newHashedPassword,
+      },
+      where: {
+        id: found.id
+      }
+    });
+
+    return {
+      id: updated.id,
+      email: updated.email,
+      subscription_level: updated.subscription_level,
+    };
   }
 
   async refreshTokens(userId: number, rt: string) {
