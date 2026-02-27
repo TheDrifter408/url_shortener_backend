@@ -1,18 +1,19 @@
 import { Controller, Post, Body, Res, UnauthorizedException, UseGuards, Req, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import  type { Response } from 'express';
+import type { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { RequestUser } from './types/JwtPayload';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from './guards/jwtAuth.guard';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly configService: ConfigService,
     private readonly authService: AuthService
-  ) {}
+  ) { }
 
   @Post('/signup')
   async signup(
@@ -91,7 +92,7 @@ export class AuthController {
   @Post('/refresh')
   @UseGuards(AuthGuard('jwt-refresh'))
   async refresh(
-    @Req() req: { user: RequestUser & { refreshToken: string} },
+    @Req() req: { user: RequestUser & { refreshToken: string } },
     @Res({ passthrough: true }) res: Response
   ) {
     const { refresh_token, access_token } = await this.authService.refreshTokens(req.user.id, req.user.refreshToken);
@@ -114,6 +115,11 @@ export class AuthController {
       maxAge: refreshTokenMaxAge,
     })
 
+  }
+
+  @Post('/reset-password')
+  async resetPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.resetPassword(forgotPasswordDto)
   }
 
   @UseGuards(JwtAuthGuard)
