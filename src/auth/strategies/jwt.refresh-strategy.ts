@@ -29,6 +29,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
     return {
       id: payload.sub,
       email: payload.email,
+      refreshToken,
     }
   }
 

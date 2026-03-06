@@ -10,4 +10,5 @@ export interface JwtPayload {
 export interface RequestUser {
   id: number;
   email: string;
+  refreshToken?: string
 }
