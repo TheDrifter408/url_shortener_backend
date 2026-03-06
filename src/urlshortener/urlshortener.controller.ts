@@ -28,6 +28,12 @@ export class UrlShortenerController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('/overview')
+  getOverview(@GetUser() user: RequestUser) {
+    return this.urlShortenerService.getOverview(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':slug/analytics')
   async getAnalytics(@Param('slug') slug: string, @GetUser() user: RequestUser) {
     return this.urlShortenerService.getAnalytics(slug, user);

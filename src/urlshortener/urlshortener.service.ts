@@ -11,6 +11,86 @@ export class UrlShortenerService {
     private prismaService: PrismaService,
   ) { }
 
+  async getOverview(user: Pick<User, "id" | "email">) {
+    const userId = user.id;
+
+    const [urlStats, clickCount, topLink, devices, browsers] = await Promise.all([
+      // Total number of links
+      this.prismaService.uRL.count({
+        where: {
+          user_id: userId
+        }
+      }),
+      // Total number of clicks across all links
+      this.prismaService.clicks.count({
+        where: {
+          url: {
+            user_id: userId
+          }
+        }
+      }),
+      // Find the link with the most clicks
+      this.prismaService.uRL.findFirst({
+        where: { user_id: userId },
+        orderBy: {
+          clicks: {
+            _count: 'desc'
+          }
+        },
+        select: {
+          slug: true,
+          long_url: true,
+          _count: {
+            select: {
+              clicks: true
+            }
+          }
+        }
+      }),
+      // Device Distribution
+      this.prismaService.clicks.groupBy({
+        by: ['device'],
+        where: {
+          url: { user_id: userId },
+        },
+        _count: {
+          _all: true,
+        }
+      }),
+      // Browser Distribution
+      this.prismaService.clicks.groupBy({
+        by: ['browser'],
+        where: {
+          url: { user_id: userId },
+        },
+        _count: {
+          _all: true,
+        }
+      })
+
+    ]);
+
+    return {
+      total_links: urlStats,
+      total_clicks: clickCount,
+      top_performer: topLink ? {
+        slug: topLink.slug,
+        clicks: topLink._count.clicks,
+        url: topLink.long_url
+      } : null,
+      distributions: {
+        devices: {
+          total: devices.reduce((acc, curr) => acc + curr._count._all, 0),
+          list: devices.map((d) => ({ label: d.device, count: d._count._all }))
+        },
+        browsers: {
+          total: browsers.reduce((acc, curr) => acc + curr._count._all, 0),
+          list: browsers.map((b) => ({ label: b.browser, count: b._count._all }))
+        }
+      }
+    }
+  }
+
   async getAllUrls(user: Pick<User, "id" | "email">) {
     const urls = await this.prismaService.uRL.findMany({
       where: {
